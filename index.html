@@ -57,6 +57,26 @@
       transition: all 0.15s ease;
     }
     .char-link-unknown:hover { color: #047857; background-color: #D1FAE5; border-bottom: 1.5px solid #059669; }
+    #mobileStudyBar { display: none; }
+    @media (max-width: 767px) {
+      #mobileStudyBar { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 52px; padding: 0 16px; }
+      #mobileStudyMenuToggle { min-height: 40px; padding: 0 12px; border: 1px solid #C7D2FE; border-radius: 10px; color: #3730A3; background: #EEF2FF; font-size: 12px; font-weight: 700; white-space: nowrap; touch-action: manipulation; }
+      #mobileStudyMenuToggle:hover { background: #E0E7FF; border-color: #3730A3; }
+      #mobileStudyMenuToggle:focus-visible { outline: 3px solid #3730A3; outline-offset: 2px; }
+      #studyMenuFold { display: block; animation: study-menu-reveal 180ms ease; }
+      .study-menu-clip { min-height: 0; overflow: hidden; }
+      #studyMenuPanel { max-height: calc(100dvh - 104px); overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid #E2E8F0; }
+      .mobile-menu-collapsed #studyMenuFold { display: none; }
+      .mobile-menu-collapsed #studyTips { display: none; }
+      #studyWorkspace { scroll-margin-top: 52px; padding-top: 12px; }
+    }
+    @keyframes study-menu-reveal {
+      from { transform: translateY(-8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #studyMenuFold { animation: none; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -70,8 +90,17 @@
   </div>
 
   <!-- Top Header & Global Study Controls -->
-  <header class="bg-white border-b border-sand sticky top-0 z-30 shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5">
+  <header id="studyHeader" class="bg-white border-b border-sand sticky top-0 z-30 shadow-xs">
+    <div id="mobileStudyBar">
+      <div class="flex items-center gap-2 min-w-0" aria-live="polite" aria-atomic="true">
+        <span id="mobileSelectedRank" class="text-[11px] font-bold text-muted shrink-0"></span>
+        <span id="mobileSelectedChar" class="hanja-font text-2xl font-bold text-indigo shrink-0"></span>
+        <span id="mobileSelectedMeaning" class="text-xs text-muted truncate"></span>
+      </div>
+      <button id="mobileStudyMenuToggle" type="button" aria-controls="studyMenuFold" aria-expanded="true" onclick="setMobileStudyMenu(document.body.classList.contains('mobile-menu-collapsed'))">메뉴 접기 ⌃</button>
+    </div>
+    <div id="studyMenuFold"><div class="study-menu-clip">
+    <div id="studyMenuPanel" class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5">
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-indigo text-white flex items-center justify-center hanja-font text-2xl font-bold shadow-xs shrink-0">
@@ -152,6 +181,7 @@
       <div id="subRankFilterBar" role="group" aria-label="선택한 순위 구간의 10자 단위 범위" class="hidden mt-2.5 flex-wrap items-center gap-1.5 rounded-xl border border-indigo/15 bg-indigo-light/40 p-2"></div>
       <div class="mt-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5" id="charSelectorBar"></div>
     </div>
+    </div></div>
   </header>
 
   <!-- Jump History Return Banner -->
@@ -168,7 +198,7 @@
   </div>
 
   <!-- Main Workspace -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+  <main id="studyWorkspace" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
       <div class="inline-flex p-1 rounded-xl bg-slate-200/70 border border-sand self-start overflow-x-auto max-w-full">
         <button onclick="setMode('mindmap')" id="tab-mindmap" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer bg-white text-indigo shadow-xs shrink-0">
@@ -194,7 +224,7 @@
 
     <!-- TAB 1: Mind-Map & Derivation View -->
     <section id="view-mindmap" class="block">
-      <div class="mb-4 px-4 py-2.5 rounded-xl bg-indigo-light/60 border border-indigo/15 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700">
+      <div id="studyTips" class="mb-4 px-4 py-2.5 rounded-xl bg-indigo-light/60 border border-indigo/15 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700">
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded bg-indigo text-white font-bold text-[11px]">학습 팁</span>
           <span>파생 어휘·호응어·예문 속 <strong>개별 한자를 클릭</strong>하면 해당 한자 마인드맵으로 즉시 이동하며, 각 어휘 카드의 <strong>'+ 예문 추가'</strong> 버튼으로 나만의 예문을 직접 입력해 저장할 수 있습니다.</span>
@@ -4247,6 +4277,35 @@
       }, 30);
     }
 
+    const mobileStudyViewport = window.matchMedia('(max-width: 767px)');
+    function setMobileStudyMenu(expanded, focusToggle = false) {
+      const toggle = document.getElementById('mobileStudyMenuToggle');
+      const panel = document.getElementById('studyMenuFold');
+      if (!expanded && panel.contains(document.activeElement)) toggle.focus({ preventScroll: true });
+      document.body.classList.toggle('mobile-menu-collapsed', !expanded);
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.textContent = expanded ? '메뉴 접기 ⌃' : '한자 선택 ⌄';
+      panel.inert = mobileStudyViewport.matches && !expanded;
+      if (focusToggle) toggle.focus({ preventScroll: true });
+      setTimeout(drawMindmapLines, 240);
+    }
+    mobileStudyViewport.addEventListener('change', () => {
+      document.getElementById('studyMenuFold').inert = mobileStudyViewport.matches && document.body.classList.contains('mobile-menu-collapsed');
+      setTimeout(drawMindmapLines, 240);
+    });
+    document.getElementById('studyMenuFold').addEventListener('keydown', event => {
+      if (event.key === 'Escape' && mobileStudyViewport.matches) {
+        event.preventDefault();
+        setMobileStudyMenu(false, true);
+      }
+    });
+    document.getElementById('charSearchInput').addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.isComposing && mobileStudyViewport.matches && getFilteredCharIndices().includes(currentCharIndex)) {
+        event.preventDefault();
+        selectCharacter(currentCharIndex, true);
+      }
+    });
+
     function selectCharacter(idx, manualClick = false) {
       if (manualClick) {
         previousCharIndex = null;
@@ -4257,6 +4316,14 @@
       activeBranchIndex = 0;
       renderCharSelector();
       renderCurrentCharacter();
+      if (manualClick && mobileStudyViewport.matches) {
+        setMobileStudyMenu(false);
+        setTimeout(() => {
+          if (mobileStudyViewport.matches && document.body.classList.contains('mobile-menu-collapsed')) {
+            document.getElementById('studyWorkspace').scrollIntoView({ block: 'start', behavior: 'instant' });
+          }
+        }, 240);
+      }
     }
 
     function setMode(mode) {
@@ -4308,6 +4375,10 @@
     function renderCurrentCharacter() {
       const data = hanjaDatabase[currentCharIndex];
       if (!data) return;
+
+      document.getElementById('mobileSelectedRank').textContent = data.rank ? `#${data.rank}` : '추가';
+      document.getElementById('mobileSelectedChar').textContent = data.char;
+      document.getElementById('mobileSelectedMeaning').textContent = data.shortMeaning;
 
       document.getElementById('rootRankBadge').textContent = data.rank ? `사용빈도 ${data.rank}위` : '확장 탐색 한자';
       document.getElementById('rootCharDisplay').textContent = data.char;
