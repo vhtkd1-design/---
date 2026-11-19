@@ -123,6 +123,13 @@
 .reading-group-empty .reading-group-help { margin-bottom: 0; }
 @media (max-width: 767px) { .reading-group { padding: 10px; } }
 /* STUDY_READINGS_CSS_END */
+    .vocab-control { min-height: 44px; touch-action: manipulation; }
+    .vocab-focus:focus-visible { outline: 2px solid #3730A3; outline-offset: 3px; }
+    .vocab-paper { background: #fff; border: 1px solid #E2E8F0; border-top: 3px solid #047857; border-radius: 1rem; }
+    .vocab-line { overflow-wrap: anywhere; }
+    .vocab-dialog { position: fixed; inset: 0; margin: auto; width: min(32rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overscroll-behavior: contain; }
+    .vocab-dialog::backdrop { background: rgb(15 23 42 / .6); }
+    #view-notebook h2, .vocab-dialog h2 { text-wrap: balance; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -131,7 +138,7 @@
   <div id="toastBanner" role="status" aria-live="polite" class="fixed bottom-5 right-5 z-50 hidden transform transition-all duration-300 translate-y-2 opacity-0">
     <div id="toastInner" class="px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center gap-2.5 bg-white border-indigo text-ink">
       <span id="toastIcon" class="w-2.5 h-2.5 rounded-full bg-indigo"></span>
-      <span id="toastMessage">알림 메시지</span>
+      <span id="toastMessage" aria-live="polite">알림 메시지</span>
     </div>
   </div>
 
@@ -247,7 +254,7 @@
   <!-- Main Workspace -->
   <main id="studyWorkspace" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
-      <div class="inline-flex p-1 rounded-xl bg-slate-200/70 border border-sand self-start overflow-x-auto max-w-full">
+      <div class="inline-flex flex-wrap p-1 rounded-xl bg-slate-200/70 border border-sand self-start max-w-full">
         <button onclick="setMode('mindmap')" id="tab-mindmap" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer bg-white text-indigo shadow-xs shrink-0">
           1. 의미 파생 마인드맵
         </button>
@@ -257,12 +264,14 @@
         <button onclick="setMode('quiz')" id="tab-quiz" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer text-muted hover:text-ink shrink-0">
           3. 실전 뉘앙스 변별 퀴즈
         </button>
+        <button type="button" onclick="setMode('notebook')" id="tab-notebook" aria-pressed="false" aria-controls="view-notebook" class="vocab-control vocab-focus px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer text-emerald hover:bg-emerald-light">내 단어장</button>
       </div>
 
       <div id="mindmapActionControls" class="flex flex-wrap items-center gap-2">
         <button onclick="toggleExpandAll()" id="expandAllBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-sand hover:border-indigo text-indigo transition shadow-xs cursor-pointer">
           전체 파생 가지 한눈에 보기
         </button>
+        <button type="button" onclick="openNotebookEditor(this)" class="vocab-control vocab-focus px-4 py-2 rounded-xl text-xs font-bold bg-emerald hover:bg-emerald-dark text-white cursor-pointer">+ 내 단어장에 추가</button>
       </div>
     </div>
 
@@ -411,81 +420,54 @@
         </div>
       </div>
     </section>
+    <section id="view-notebook" class="hidden vocab-paper" aria-labelledby="notebookTitle">
+      <header class="flex flex-wrap items-start justify-between gap-4 border-b border-sand p-5 sm:p-7">
+        <div class="min-w-0">
+          <h2 id="notebookTitle" class="text-2xl font-bold serif-kr text-ink">내 단어장</h2>
+          <p class="mt-2 max-w-lg text-sm leading-relaxed text-muted">이 사이트를 연 브라우저에만 저장돼요. 공용 학습 자료에 반영되거나 다른 기기와 동기화되지 않아요. 브라우저 데이터를 지우기 전에 JSON으로 백업할 수 있어요.</p>
+        </div>
+        <button type="button" onclick="openNotebookEditor(this)" class="vocab-control vocab-focus rounded-xl bg-emerald px-4 text-sm font-bold text-white hover:bg-emerald-dark cursor-pointer">+ 단어 추가</button>
+      </header>
+      <div class="px-5 py-4 sm:px-7 bg-paper border-b border-sand">
+        <label for="notebookSearch" class="block text-sm font-semibold mb-1.5">단어장 검색</label>
+        <input type="search" id="notebookSearch" name="notebook-search" autocomplete="off" placeholder="단어, 뜻, 병음, 연결 한자…" class="vocab-control vocab-focus w-full max-w-lg rounded-xl border border-sand bg-white px-3 text-base">
+        <p id="notebookCount" aria-live="polite" class="mt-2 text-sm text-muted"></p>
+      </div>
+      <p id="notebookEmpty" class="hidden px-5 py-9 sm:px-7 text-sm leading-relaxed text-muted"></p>
+      <ul id="notebookList" class="divide-y divide-sand px-5 sm:px-7"></ul>
+      <div id="notebookPagination" class="hidden items-center justify-between gap-3 border-t border-sand px-5 py-3 sm:px-7">
+        <button type="button" id="notebookPrev" class="vocab-control vocab-focus rounded-lg border border-sand px-3 text-sm hover:bg-paper disabled:opacity-50">이전</button>
+        <span id="notebookPage" aria-live="polite" class="text-sm text-muted"></span>
+        <button type="button" id="notebookNext" class="vocab-control vocab-focus rounded-lg border border-sand px-3 text-sm hover:bg-paper disabled:opacity-50">다음</button>
+      </div>
+    </section>
   </main>
 
-  <!-- Modal 1: AI Auto-Add New Derived Vocabulary -->
-  <div id="addWordModal" role="dialog" aria-modal="true" aria-labelledby="addWordTitle" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-white rounded-2xl border border-sand shadow-2xl max-w-2xl w-full p-6 sm:p-7 my-4 relative max-h-[calc(100dvh-4rem)] overflow-y-auto">
-      <div class="flex items-center justify-between pb-4 mb-5 border-b border-sand">
-        <div class="flex items-center gap-2.5">
-          <span id="modalTargetCharBadge" class="w-9 h-9 rounded-xl bg-indigo text-white hanja-font text-xl font-bold flex items-center justify-center">会</span>
-          <div>
-            <h3 id="addWordTitle" class="text-lg font-bold text-ink serif-kr">새 파생 어휘 AI 자동 추가</h3>
-            <p class="text-xs text-muted">단어를 입력하면 AI가 의미 연결·병음·호응어·예문을 채워요. 틀릴 수 있으니 저장 전에 검토해 주세요. AI 실행 시 크레딧을 사용해요.</p>
-          </div>
-        </div>
-        <button onclick="closeAddWordModal()" aria-label="어휘 추가 창 닫기" class="p-2 rounded-lg text-muted hover:text-ink hover:bg-paper transition cursor-pointer">✕</button>
+  <dialog id="notebookEditor" aria-labelledby="notebookEditorTitle" class="vocab-dialog vocab-paper p-5 sm:p-7 text-ink overflow-y-auto">
+    <form id="notebookForm" autocomplete="off" novalidate>
+      <h2 id="notebookEditorTitle" class="text-xl font-bold serif-kr"></h2>
+      <p class="my-3 flex flex-wrap items-center gap-2 text-sm text-muted">연결 한자 <strong id="notebookChar" class="hanja-font rounded-md bg-emerald-light px-2 py-0.5 text-lg text-emerald" lang="zh"></strong><span>내 단어장에만 저장해요.</span></p>
+      <div class="space-y-3">
+        <label class="block text-sm font-semibold">중국어 단어 *
+          <input id="notebookWord" name="word" lang="zh" maxlength="80" required spellcheck="false" aria-describedby="notebookError" class="vocab-control vocab-focus mt-1 block w-full rounded-lg border border-sand px-3 text-base">
+        </label>
+        <label class="block text-sm font-semibold">한국어 뜻 *
+          <input id="notebookMeaning" name="meaning" maxlength="240" required aria-describedby="notebookError" class="vocab-control vocab-focus mt-1 block w-full rounded-lg border border-sand px-3 text-base">
+        </label>
+        <label class="block text-sm font-semibold">병음 (선택)
+          <input id="notebookPinyin" name="pinyin" maxlength="120" spellcheck="false" class="vocab-control vocab-focus mt-1 block w-full rounded-lg border border-sand px-3 text-base">
+        </label>
+        <label class="block text-sm font-semibold">중국어 예문 (선택)
+          <textarea id="notebookExample" name="example" lang="zh" rows="2" maxlength="600" class="vocab-focus mt-1 block w-full rounded-lg border border-sand px-3 py-2 text-base"></textarea>
+        </label>
       </div>
-      <div class="bg-paper p-4 rounded-xl border border-sand mb-5">
-        <label for="aiInputWord" class="block text-xs font-bold text-ink mb-1.5">추가할 중국어 단어 또는 성어 입력 <span class="text-emerald">*</span></label>
-        <div class="flex flex-col sm:flex-row gap-2.5">
-          <input type="text" id="aiInputWord" placeholder="예: 融会贯通, 循序渐进..." class="flex-1 px-3.5 py-2.5 rounded-xl border border-sand bg-white text-base hanja-font font-bold focus:outline-none focus:border-indigo">
-          <button type="button" id="aiAutoFillBtn" onclick="runAiAutoFill()" class="px-5 py-2.5 rounded-xl bg-emerald hover:bg-emerald-dark text-white text-xs sm:text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer">
-            <span id="aiAutoFillBtnText">AI 자동 완성</span>
-          </button>
-        </div>
-        <p class="text-[11px] text-muted mt-1.5">선택한 한자(<span id="modalHintChar" class="font-bold text-indigo"></span>)가 포함된 단어를 입력하고 'AI 자동 완성'을 누르세요.</p>
+      <p id="notebookError" aria-live="polite" class="mt-3 text-sm text-red-700"></p>
+      <div class="mt-5 flex justify-end gap-2">
+        <button type="button" id="notebookCancel" class="vocab-control vocab-focus rounded-lg border border-sand px-4 text-sm font-semibold hover:bg-paper cursor-pointer">취소</button>
+        <button type="submit" class="vocab-control vocab-focus rounded-lg bg-emerald px-4 text-sm font-bold text-white hover:bg-emerald-dark cursor-pointer">단어 저장</button>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-4">
-        <div>
-          <label class="block text-xs font-semibold text-muted mb-1">파생 의미 갈래</label>
-          <input type="text" id="fieldStep" class="w-full px-3 py-2 rounded-lg border border-sand text-xs sm:text-sm">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-muted mb-1">의미 연결 논리</label>
-          <input type="text" id="fieldLogic" class="w-full px-3 py-2 rounded-lg border border-sand text-xs sm:text-sm">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-muted mb-1">한어병음</label>
-          <input type="text" id="fieldPinyin" class="w-full px-3 py-2 rounded-lg border border-sand text-xs sm:text-sm">
-        </div>
-        <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-muted mb-1">품사</label>
-            <input type="text" id="fieldPos" class="w-full px-3 py-2 rounded-lg border border-sand text-xs sm:text-sm">
-          </div>
-          <div class="col-span-2">
-            <label class="block text-xs font-semibold text-muted mb-1">핵심 한국어 뜻</label>
-            <input type="text" id="fieldMeaning" class="w-full px-3 py-2 rounded-lg border border-sand text-xs sm:text-sm">
-          </div>
-        </div>
-      </div>
-      <div class="space-y-3 mb-6">
-        <div>
-          <label class="block text-xs font-semibold text-muted mb-1">자주 쓰는 호응어</label>
-          <input type="text" id="fieldCollocation" class="w-full px-3 py-2 rounded-lg border border-sand text-xs sm:text-sm hanja-font">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-muted mb-1">중국어 예문</label>
-          <input type="text" id="fieldExample" class="w-full px-3 py-2 rounded-lg border border-sand text-sm hanja-font">
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-muted mb-1">예문 병음</label>
-            <input type="text" id="fieldExamplePinyin" class="w-full px-3 py-2 rounded-lg border border-sand text-xs">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted mb-1">예문 한국어 해석</label>
-            <input type="text" id="fieldExampleKorean" class="w-full px-3 py-2 rounded-lg border border-sand text-xs">
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-sand">
-        <button type="button" onclick="closeAddWordModal()" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-muted hover:text-ink border border-sand hover:bg-paper transition cursor-pointer">취소</button>
-        <button type="button" onclick="saveNewBranchToMindmap()" class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo hover:bg-indigo-dark text-white transition shadow-sm cursor-pointer">마인드맵에 연결하기</button>
-      </div>
-    </div>
-  </div>
+    </form>
+  </dialog>
 
   <!-- Modal 2: Cross-Link Unknown Character AI Explorer -->
   <div id="charExplorerModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
@@ -4986,7 +4968,212 @@
     // Keep study content and rankings from this edition; carry personal additions by character and word.
     const canonicalHanja = [...defaultHanjaDatabase, ...archivedHanja];
     const removedStudyChars = new Set(['叁', '稜', '紶', '窢']);
+    const NOTEBOOK_KEY = 'hanja_private_notebook_v1';
+    const notebookNumber = new Intl.NumberFormat('ko-KR');
+    let notebookEntries = [];
+    let notebookPage = 0;
+    let notebookEdit = null;
+    let notebookReturnFocus = null;
+    let notebookStartingDraft = '';
     let hanjaDatabase = loadAndMigrateDatabase();
+
+    function notebookText(value) {
+      return typeof value === 'string' ? value.trim() : '';
+    }
+
+    function notebookKey(char, word) {
+      return JSON.stringify([char, word.normalize('NFC').replace(/\s+/g, ' ')]);
+    }
+
+    function isExplorerSample(item, branch) {
+      return item.isExplored && branch?.word === item.synonymLab?.items?.[0]?.word;
+    }
+
+    function legacyNotebookEntries(items) {
+      return items.flatMap(item => !Array.isArray(item?.derivations) ? [] : item.derivations.flatMap(branch => {
+        if (!branch?.isCustom || isExplorerSample(item, branch)) return [];
+        return [{ char: item.char, word: branch.word, meaning: branch.meaning, pinyin: branch.wordPinyin,
+          example: branch.example, examplePinyin: branch.examplePinyin, exampleKorean: branch.exampleKorean,
+          extraExamples: branch.customExamples }];
+      }));
+    }
+
+    function combineNotebookEntries(current, incoming) {
+      const result = [...current];
+      const seen = new Set(current.map(entry => notebookKey(entry.char, entry.word)));
+      for (const raw of incoming) {
+        const char = notebookText(raw?.char), word = notebookText(raw?.word);
+        if (!/^\p{Script=Han}$/u.test(char) || removedStudyChars.has(char) || !word) continue;
+        const key = notebookKey(char, word);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const extraExamples = Array.isArray(raw.extraExamples) ? raw.extraExamples.map(ex => ({
+          cn: notebookText(ex?.cn || ex?.text), pinyin: notebookText(ex?.pinyin), korean: notebookText(ex?.korean)
+        })).filter(ex => ex.cn) : [];
+        result.push({ char, word, meaning: notebookText(raw.meaning), pinyin: notebookText(raw.pinyin),
+          example: notebookText(raw.example), examplePinyin: notebookText(raw.examplePinyin),
+          exampleKorean: notebookText(raw.exampleKorean), extraExamples });
+      }
+      return result;
+    }
+
+    function persistNotebook(entries) {
+      try {
+        localStorage.setItem(NOTEBOOK_KEY, JSON.stringify(entries));
+        notebookEntries = entries;
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function notebookNode(tag, className, text) {
+      const node = document.createElement(tag);
+      node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function renderNotebook() {
+      const $ = id => document.getElementById(id);
+      const search = value => value.normalize('NFC').toLocaleLowerCase('ko-KR');
+      const query = search($('notebookSearch').value.trim());
+      const matches = notebookEntries.filter(entry => [entry.char, entry.word, entry.meaning, entry.pinyin].some(text => search(text).includes(query)));
+      const perPage = 30;
+      const pages = Math.max(1, Math.ceil(matches.length / perPage));
+      notebookPage = Math.min(notebookPage, pages - 1);
+      $('notebookCount').textContent = query ? `검색 결과 ${notebookNumber.format(matches.length)}개` : `저장한 단어 ${notebookNumber.format(matches.length)}개`;
+      const empty = $('notebookEmpty');
+      empty.classList.toggle('hidden', matches.length > 0);
+      empty.textContent = query ? '검색 결과가 없어요. 다른 단어나 뜻으로 검색해 보세요.' : '아직 저장한 단어가 없어요. ‘단어 추가’를 눌러 첫 단어를 기록해 보세요.';
+      const pagination = $('notebookPagination');
+      pagination.classList.toggle('hidden', pages === 1);
+      pagination.classList.toggle('flex', pages > 1);
+      $('notebookPage').textContent = `${notebookNumber.format(notebookPage + 1)} / ${notebookNumber.format(pages)}쪽`;
+      $('notebookPrev').disabled = notebookPage === 0;
+      $('notebookNext').disabled = notebookPage + 1 === pages;
+      const rows = matches.slice(notebookPage * perPage, (notebookPage + 1) * perPage).map(entry => {
+        const row = notebookNode('li', 'flex flex-wrap items-start justify-between gap-x-5 gap-y-2 py-4');
+        const body = notebookNode('div', 'min-w-0 flex-1 basis-48 vocab-line');
+        const heading = notebookNode('div', 'flex flex-wrap items-baseline gap-x-3 gap-y-1');
+        const char = notebookNode('span', 'hanja-font shrink-0 rounded-md bg-emerald-light px-2 py-1 text-sm text-emerald', entry.char);
+        char.setAttribute('lang', 'zh');
+        char.setAttribute('aria-label', `연결 한자 ${entry.char}`);
+        const word = notebookNode('h3', 'hanja-font text-xl font-bold min-w-0', entry.word);
+        word.lang = 'zh';
+        heading.append(char, word);
+        if (entry.pinyin) heading.append(notebookNode('span', 'text-sm text-indigo', entry.pinyin));
+        body.append(heading, notebookNode('p', 'mt-2 text-sm leading-relaxed text-ink', entry.meaning || '뜻 미입력'));
+        const appendExample = (cn, pinyin, korean) => {
+          if (!cn && !pinyin && !korean) return;
+          const example = notebookNode('div', 'mt-2 border-l-2 border-sand pl-3 text-sm leading-relaxed text-muted');
+          if (cn) {
+            const text = notebookNode('p', 'hanja-font whitespace-pre-wrap', cn);
+            text.lang = 'zh';
+            example.append(text);
+          }
+          if (pinyin) example.append(notebookNode('p', '', pinyin));
+          if (korean) example.append(notebookNode('p', '', korean));
+          body.append(example);
+        };
+        appendExample(entry.example, entry.examplePinyin, entry.exampleKorean);
+        for (const ex of entry.extraExamples) appendExample(ex.cn, ex.pinyin, ex.korean);
+        const actions = notebookNode('div', 'flex shrink-0 gap-1');
+        const edit = notebookNode('button', 'vocab-control vocab-focus rounded-lg px-3 text-sm font-semibold text-indigo hover:bg-indigo-light cursor-pointer', '수정');
+        const remove = notebookNode('button', 'vocab-control vocab-focus rounded-lg px-3 text-sm font-semibold text-red-700 hover:bg-red-50 cursor-pointer', '삭제');
+        edit.type = remove.type = 'button';
+        edit.setAttribute('aria-label', `${entry.word} 수정`);
+        remove.setAttribute('aria-label', `${entry.word} 삭제`);
+        edit.addEventListener('click', () => openNotebookEditor(edit, entry));
+        remove.addEventListener('click', () => {
+          if (!confirm(`‘${entry.word}’을(를) 내 단어장에서 삭제할까요?`)) return;
+          if (!persistNotebook(notebookEntries.filter(item => item !== entry))) {
+            showToast('삭제 내용을 저장하지 못했어요. 브라우저 저장 설정을 확인해 주세요.', 'error');
+            return;
+          }
+          renderNotebook();
+          $('notebookSearch').focus({ preventScroll: true });
+          showToast('내 단어장에서 삭제했어요.');
+        });
+        actions.append(edit, remove);
+        row.append(body, actions);
+        return row;
+      });
+      $('notebookList').replaceChildren(...rows);
+    }
+
+    function notebookDraft() {
+      return JSON.stringify(Array.from(new FormData(document.getElementById('notebookForm')).entries()));
+    }
+
+    function openNotebookEditor(trigger, entry = null) {
+      const $ = id => document.getElementById(id);
+      const char = entry?.char ?? hanjaDatabase[currentCharIndex]?.char;
+      if (!char) return;
+      notebookEdit = entry;
+      notebookReturnFocus = trigger;
+      $('notebookEditorTitle').textContent = entry ? '내 단어 수정' : '내 단어장에 추가';
+      $('notebookChar').textContent = char;
+      $('notebookWord').value = entry?.word ?? '';
+      $('notebookMeaning').value = entry?.meaning ?? '';
+      $('notebookPinyin').value = entry?.pinyin ?? '';
+      $('notebookExample').value = entry?.example ?? '';
+      $('notebookError').textContent = '';
+      for (const id of ['notebookWord', 'notebookMeaning']) $(id).removeAttribute('aria-invalid');
+      notebookStartingDraft = notebookDraft();
+      $('notebookEditor').showModal();
+    }
+
+    function initNotebook() {
+      const $ = id => document.getElementById(id);
+      const dialog = $('notebookEditor');
+      const search = $('notebookSearch');
+      const form = $('notebookForm');
+      const closeEditor = () => {
+        if (notebookDraft() === notebookStartingDraft || confirm('저장하지 않은 변경을 버릴까요?')) dialog.close();
+      };
+      search.addEventListener('input', () => { notebookPage = 0; renderNotebook(); });
+      $('notebookPrev').addEventListener('click', () => { notebookPage--; renderNotebook(); });
+      $('notebookNext').addEventListener('click', () => { notebookPage++; renderNotebook(); });
+      $('notebookCancel').addEventListener('click', closeEditor);
+      dialog.addEventListener('cancel', event => { event.preventDefault(); closeEditor(); });
+      dialog.addEventListener('close', () => {
+        (notebookReturnFocus?.isConnected && !notebookReturnFocus.closest('.hidden') ? notebookReturnFocus : $('tab-notebook')).focus({ preventScroll: true });
+      });
+      window.addEventListener('beforeunload', event => {
+        if (dialog.open && notebookDraft() !== notebookStartingDraft) { event.preventDefault(); event.returnValue = ''; }
+      });
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        const char = $('notebookChar').textContent;
+        const wordField = $('notebookWord'), meaningField = $('notebookMeaning');
+        const word = wordField.value.trim(), meaning = meaningField.value.trim();
+        wordField.removeAttribute('aria-invalid');
+        meaningField.removeAttribute('aria-invalid');
+        const error = (message, field) => {
+          $('notebookError').textContent = message;
+          if (field) { field.setAttribute('aria-invalid', 'true'); field.focus(); }
+        };
+        if (!word) return error('중국어 단어를 입력해 주세요.', wordField);
+        if (!meaning) return error('한국어 뜻을 입력해 주세요.', meaningField);
+        if (notebookEntries.some(entry => entry !== notebookEdit && notebookKey(entry.char, entry.word) === notebookKey(char, word))) {
+          return error('이 한자에 이미 저장한 단어예요. 내 단어장에서 기존 항목을 수정해 주세요.', wordField);
+        }
+        const example = $('notebookExample').value.trim();
+        const entry = { ...notebookEdit, char, word, meaning, example, pinyin: $('notebookPinyin').value.trim(),
+          extraExamples: notebookEdit?.extraExamples ?? [] };
+        if (!notebookEdit || example !== notebookEdit.example) { entry.examplePinyin = ''; entry.exampleKorean = ''; }
+        const edited = !!notebookEdit;
+        if (!persistNotebook(edited ? notebookEntries.map(item => item === notebookEdit ? entry : item) : [entry, ...notebookEntries])) {
+          return error('이 브라우저에 저장하지 못했어요. 저장 공간이나 브라우저 설정을 확인해 주세요.');
+        }
+        if (!edited) { search.value = ''; notebookPage = 0; }
+        dialog.close();
+        if (currentMode === 'notebook') renderNotebook();
+        showToast(edited ? '단어를 수정했어요.' : '내 단어장에 저장했어요.');
+      });
+      if (new URL(location.href).searchParams.get('view') === 'notebook') setMode('notebook');
+    }
 
     function mergePersonalStudy(db, savedItems) {
       const byChar = new Map(db.map(item => [item.char, item]));
@@ -4996,7 +5183,9 @@
         const target = byChar.get(savedItem.char);
         if (!target) {
           if (savedItem.isExplored && savedItem.derivations.length > 0 && Array.isArray(savedItem.synonymLab?.items) && Array.isArray(savedItem.synonymLab?.antonyms)) {
-            const explored = { ...savedItem, rank: null, isArchived: false };
+            const derivations = savedItem.derivations.filter(branch => branch && (!branch.isCustom || isExplorerSample(savedItem, branch)));
+            if (!derivations.length) continue;
+            const explored = { ...savedItem, derivations, rank: null, isArchived: false };
             db.push(explored);
             byChar.set(explored.char, explored);
           }
@@ -5005,10 +5194,7 @@
         for (const incoming of savedItem.derivations) {
           if (!incoming || typeof incoming.word !== 'string') continue;
           const existing = target.derivations.find(d => d.word === incoming.word);
-          if (!existing) {
-            if (incoming.isCustom) target.derivations.push(incoming);
-            continue;
-          }
+          if (!existing) continue;
           if (!Array.isArray(incoming.customExamples)) continue;
           const examples = new Set((existing.customExamples || []).map(example => JSON.stringify(example)));
           existing.customExamples = [...(existing.customExamples || [])];
@@ -5024,14 +5210,21 @@
     function loadAndMigrateDatabase() {
       const baseDb = JSON.parse(JSON.stringify(canonicalHanja));
       const keysToCheck = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS];
-
+      let oldItems = [];
       for (const key of keysToCheck) {
         try {
           const parsed = JSON.parse(localStorage.getItem(key));
-          if (Array.isArray(parsed) && (key === STORAGE_KEY || parsed.length)) return mergePersonalStudy(baseDb, parsed);
+          if (Array.isArray(parsed) && (key === STORAGE_KEY || parsed.length)) {
+            oldItems = parsed;
+            break;
+          }
         } catch (e) {}
       }
-      return baseDb;
+      let stored = null;
+      try { stored = JSON.parse(localStorage.getItem(NOTEBOOK_KEY)); } catch {}
+      notebookEntries = combineNotebookEntries([], Array.isArray(stored) ? stored : legacyNotebookEntries(oldItems));
+      if (!Array.isArray(stored) && notebookEntries.length) persistNotebook(notebookEntries);
+      return mergePersonalStudy(baseDb, oldItems);
     }
 
     function saveDatabaseToLocal() {
@@ -5043,6 +5236,10 @@
             : []);
           return derivations.length ? [{ char: item.char, derivations }] : [];
         });
+        // Keep the original legacy words recoverable if the browser rejected migration.
+        if (notebookEntries.length && localStorage.getItem(NOTEBOOK_KEY) === null && !persistNotebook(notebookEntries)) {
+          throw new Error('Notebook migration not saved');
+        }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(personal));
         return true;
       } catch (e) {
@@ -5299,6 +5496,7 @@
       renderCharSelector();
       renderCurrentCharacter();
       changeQuizScope();
+      initNotebook();
       window.addEventListener('resize', () => {
         if (currentMode === 'mindmap') drawMindmapLines();
       });
@@ -5404,23 +5602,36 @@
 
     function setMode(mode) {
       currentMode = mode;
-      ['mindmap', 'synonym', 'quiz'].forEach(m => {
+      ['mindmap', 'synonym', 'quiz', 'notebook'].forEach(m => {
         const tab = document.getElementById(`tab-${m}`);
         const view = document.getElementById(`view-${m}`);
         if (!tab || !view) return;
+        const baseTabClass = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer shrink-0';
+        const notebookTabClass = ' vocab-control vocab-focus';
         if (m === mode) {
-          tab.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer bg-white text-indigo shadow-xs shrink-0';
+          tab.className = baseTabClass + ' bg-white text-indigo shadow-xs' + (m === 'notebook' ? notebookTabClass : '');
           view.classList.remove('hidden');
           view.classList.add('block');
         } else {
-          tab.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer text-muted hover:text-ink shrink-0';
+          tab.className = baseTabClass + (m === 'notebook' ? notebookTabClass + ' text-emerald hover:bg-emerald-light' : ' text-muted hover:text-ink');
           view.classList.remove('block');
           view.classList.add('hidden');
         }
+        if (m === 'notebook') tab.setAttribute('aria-pressed', String(m === mode));
       });
       const mindmapControls = document.getElementById('mindmapActionControls');
       if (mindmapControls) mindmapControls.style.display = mode === 'mindmap' ? 'flex' : 'none';
       if (mode === 'mindmap') setTimeout(drawMindmapLines, 30);
+      if (mode === 'notebook') {
+        if (mobileStudyViewport.matches) setMobileStudyMenu(false);
+        renderNotebook();
+      }
+      const url = new URL(location.href);
+      if (mode === 'notebook') url.searchParams.set('view', 'notebook');
+      else if (url.searchParams.get('view') === 'notebook') url.searchParams.delete('view');
+      if (url.href !== location.href) {
+        try { history.replaceState(history.state, '', url); } catch {}
+      }
     }
 
     function togglePinyin() {
@@ -5921,95 +6132,13 @@ function renderStudyReadingGroups(data, cards) {
       showToast(`'${currentExploredCharObj.char}' 한자가 추가되었습니다!`);
     }
 
-    // AI Add Derived Vocabulary Modal
-    function openAddWordModal() {
-      const data = hanjaDatabase[currentCharIndex];
-      const nextNum = data.derivations.length + 1;
-      document.getElementById('modalTargetCharBadge').textContent = data.char;
-      document.getElementById('modalHintChar').textContent = data.char;
-      document.getElementById('aiInputWord').value = '';
-      document.getElementById('fieldStep').value = `파생 (${nextNum}) `;
-      ['fieldLogic', 'fieldPinyin', 'fieldPos', 'fieldMeaning', 'fieldCollocation', 'fieldExample', 'fieldExamplePinyin', 'fieldExampleKorean'].forEach(id => {
-        document.getElementById(id).value = '';
-      });
-      document.getElementById('addWordModal').classList.remove('hidden');
-    }
-
-    function closeAddWordModal() {
-      document.getElementById('addWordModal').classList.add('hidden');
-    }
-
-    async function runAiAutoFill() {
-      const wordInput = document.getElementById('aiInputWord').value.trim();
-      const data = hanjaDatabase[currentCharIndex];
-      if (!wordInput) {
-        showToast('중국어 단어를 입력해 주세요.', 'error');
-        return;
-      }
-      const btn = document.getElementById('aiAutoFillBtn');
-      const btnText = document.getElementById('aiAutoFillBtnText');
-      btn.disabled = true;
-      btnText.textContent = 'AI가 어휘를 분석하고 있어요…';
-
-      try {
-        const res = await requestStudyAi('word', { char: data.char, word: wordInput });
-        if (hanjaDatabase[currentCharIndex] !== data || document.getElementById('aiInputWord').value.trim() !== wordInput) return;
-        if (res.wordPinyin) {
-          document.getElementById('fieldStep').value = res.step || document.getElementById('fieldStep').value;
-          document.getElementById('fieldLogic').value = res.logic || '';
-          document.getElementById('fieldPinyin').value = res.wordPinyin || '';
-          document.getElementById('fieldPos').value = res.pos || '';
-          document.getElementById('fieldMeaning').value = res.meaning || '';
-          document.getElementById('fieldCollocation').value = res.collocation || '';
-          document.getElementById('fieldExample').value = res.example || '';
-          document.getElementById('fieldExamplePinyin').value = res.examplePinyin || '';
-          document.getElementById('fieldExampleKorean').value = res.exampleKorean || '';
-          showToast('AI가 항목을 채웠어요. 내용을 검토하고 저장해 주세요.');
-        }
-      } catch (e) {
-        showToast(e.message || aiRetryMessage, 'error');
-      } finally {
-        btn.disabled = false;
-        btnText.textContent = 'AI 자동 완성';
-      }
-    }
-
-    function saveNewBranchToMindmap() {
-      const word = document.getElementById('aiInputWord').value.trim();
-      const meaning = document.getElementById('fieldMeaning').value.trim();
-      if (!word || !meaning) {
-        showToast('단어와 핵심 한국어 뜻은 필수 입력 항목입니다.', 'error');
-        return;
-      }
-      const data = hanjaDatabase[currentCharIndex];
-      data.derivations.push({
-        step: document.getElementById('fieldStep').value.trim() || `파생 ${data.derivations.length + 1}`,
-        logic: document.getElementById('fieldLogic').value.trim() || `'${data.char}'에서 확장된 어휘`,
-        word,
-        wordPinyin: document.getElementById('fieldPinyin').value.trim() || '-',
-        pos: document.getElementById('fieldPos').value.trim() || '어휘',
-        meaning,
-        collocation: document.getElementById('fieldCollocation').value.trim() || '-',
-        example: document.getElementById('fieldExample').value.trim() || `${word}的用法示例。`,
-        examplePinyin: document.getElementById('fieldExamplePinyin').value.trim(),
-        exampleKorean: document.getElementById('fieldExampleKorean').value.trim() || meaning,
-        isCustom: true,
-        customExamples: []
-      });
-      activeBranchIndex = data.derivations.length - 1;
-      saveDatabaseToLocal();
-      closeAddWordModal();
-      renderCharSelector();
-      renderMindmapBranches();
-      showToast(`'${word}' 파생 가지가 추가되었습니다!`);
-    }
-
     // JSON Export & Import
     function exportDataJson() {
       try {
         const exportObj = {
           meta: { title: `중국어 핵심 한자 의미 파생 마인드맵 데이터베이스 (1~${defaultHanjaDatabase.length}위)`, exported_at: new Date().toISOString() },
-          characters_array: hanjaDatabase
+          characters_array: hanjaDatabase,
+          personal_notebook: notebookEntries
         };
         const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -6033,8 +6162,21 @@ function renderStudyReadingGroups(data, cards) {
       reader.onload = function(e) {
         try {
           const imported = JSON.parse(e.target.result);
-          const list = Array.isArray(imported) ? imported : imported.characters_array;
-          if (Array.isArray(list) && list.length > 0 && list[0].char) {
+          const list = Array.isArray(imported) ? imported : imported?.characters_array;
+          const hasStudy = Array.isArray(list) && list.some(item => typeof item?.char === 'string' && Array.isArray(item.derivations));
+          const hasNotebook = Array.isArray(imported?.personal_notebook);
+          if (hasStudy || hasNotebook) {
+            const additions = [...(hasNotebook ? imported.personal_notebook : []), ...(hasStudy ? legacyNotebookEntries(list) : [])];
+            const combined = combineNotebookEntries(notebookEntries, additions);
+            if (combined.length !== notebookEntries.length && !persistNotebook(combined)) {
+              showToast('단어장을 불러오지 못했어요. 브라우저 저장 공간을 확인해 주세요.', 'error');
+              return;
+            }
+            if (currentMode === 'notebook') renderNotebook();
+            if (!hasStudy) {
+              showToast('내 단어장을 불러왔어요. 중복 항목은 그대로 두었어요.');
+              return;
+            }
             mergePersonalStudy(hanjaDatabase, list);
             const saved = saveDatabaseToLocal();
             currentCharIndex = 0;
@@ -6049,8 +6191,9 @@ function renderStudyReadingGroups(data, cards) {
           }
         } catch (err) {
           showToast('JSON 파일을 읽는 중 오류가 발생했습니다.', 'error');
+        } finally {
+          event.target.value = '';
         }
-        event.target.value = '';
       };
       reader.readAsText(file);
     }
