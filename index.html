@@ -27546,6 +27546,7 @@
           if (!incoming || typeof incoming.word !== 'string') continue;
           const existing = target.derivations.find(d => d.word === incoming.word);
           if (!existing) continue;
+          if (typeof incoming.exampleHidden === 'boolean') existing.exampleHidden = incoming.exampleHidden;
           if (incoming.isAiEnriched) {
             existing.isAiEnriched = true;
             if (typeof incoming.meaning === 'string' && incoming.meaning) existing.meaning = incoming.meaning;
@@ -27603,10 +27604,13 @@
                 example: branch.example || '',
                 examplePinyin: branch.examplePinyin || '',
                 exampleKorean: branch.exampleKorean || '',
+                exampleHidden: branch.exampleHidden === true,
                 customExamples: branch.customExamples || []
               }];
             }
-            return branch.customExamples?.length ? [{ word: branch.word, customExamples: branch.customExamples }] : [];
+            return branch.customExamples?.length || branch.exampleHidden
+              ? [{ word: branch.word, exampleHidden: branch.exampleHidden === true, customExamples: branch.customExamples || [] }]
+              : [];
           });
           return derivations.length ? [{ char: item.char, derivations }] : [];
         });
@@ -28283,7 +28287,9 @@ function renderStudyReadingGroups(data, cards) {
         const linkedHeaderWord = renderClickableHanjaText(branch.word, branch.word);
         const linkedDetailWord = renderClickableHanjaText(branch.word, branch.word);
         const linkedCollocation = branch.collocation ? renderClickableHanjaText(branch.collocation, branch.word) : '';
-        const linkedDefaultExample = branch.example ? renderClickableHanjaText(branch.example, branch.word) : '';
+        const showDefaultExample = Boolean(branch.example && !branch.exampleHidden);
+        const linkedDefaultExample = showDefaultExample ? renderClickableHanjaText(branch.example, branch.word) : '';
+        const isGeneratingUsage = pendingBranchUsages.has(branch);
         const customExamples = Array.isArray(branch.customExamples) ? branch.customExamples : [];
 
         return `
@@ -28323,9 +28329,9 @@ function renderStudyReadingGroups(data, cards) {
                 ` : ''}
 
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <span class="text-[11px] font-bold text-muted uppercase tracking-wider">용례 및 나만의 예문 (${(branch.example ? 1 : 0) + customExamples.length}개)</span>
-                  <div class="flex items-center gap-1.5">
-                    ${branch.isHsk ? `<button type="button" onclick="aiFillBranchUsage(${idx})" id="aiBranchBtn-${idx}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-light hover:bg-emerald text-emerald hover:text-white border border-emerald/30 transition cursor-pointer">${branch.example ? '✨ AI 호응어·예문 재생성' : '✨ AI 호응어·예문 생성'}</button>` : ''}
+                  <span class="text-[11px] font-bold text-muted uppercase tracking-wider">용례 및 나만의 예문 (${(showDefaultExample ? 1 : 0) + customExamples.length}개)</span>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" onclick="event.stopPropagation(); aiFillBranchUsage(${idx})" id="aiBranchBtn-${idx}" ${isGeneratingUsage ? 'disabled aria-busy="true"' : ''} class="min-h-9 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-light hover:bg-emerald hover:text-white text-emerald border border-emerald/30 transition cursor-pointer disabled:opacity-60 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-emerald">${isGeneratingUsage ? 'AI 용례 생성 중…' : branch.example || branch.collocation ? '✨ AI 호응어·예문 재생성' : '✨ AI 호응어·예문 생성'}</button>
                     <button type="button" onclick="toggleInlineExampleForm(${idx})" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-light hover:bg-indigo text-indigo hover:text-white transition cursor-pointer">+ 예문 추가</button>
                   </div>
                 </div>
@@ -28347,12 +28353,20 @@ function renderStudyReadingGroups(data, cards) {
                 </div>
 
                 <div class="space-y-2.5">
-                  ${branch.example ? `
+                  ${showDefaultExample ? `
                     <div class="bg-white rounded-xl p-3.5 border border-sand">
-                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${branch.isAiEnriched ? 'bg-emerald-light text-emerald' : 'bg-slate-100 text-muted'} inline-block mb-1">${branch.isAiEnriched ? 'AI 생성 대표 예문' : '기본 예문 1'}</span>
+                      <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${branch.isAiEnriched ? 'bg-emerald-light text-emerald' : 'bg-slate-100 text-muted'}">${branch.isAiEnriched ? 'AI 생성 대표 예문' : '기본 예문 1'}</span>
+                        <button type="button" onclick="event.stopPropagation(); setDefaultExampleHidden(${idx}, true)" aria-label="대표 예문 삭제" class="min-h-9 px-2 rounded text-xs font-semibold text-red-700 hover:bg-red-50 cursor-pointer focus-visible:outline-2 focus-visible:outline-red-700">삭제</button>
+                      </div>
                       <p class="hanja-font text-base sm:text-lg font-medium text-ink leading-relaxed">${linkedDefaultExample}</p>
                       ${branch.examplePinyin ? `<p class="pinyin-text text-xs text-muted mt-1">${branch.examplePinyin}</p>` : ''}
                       ${branch.exampleKorean ? `<p class="korean-text text-sm text-ink/85 mt-1.5 pt-1.5 border-t border-sand/60">${branch.exampleKorean}</p>` : ''}
+                    </div>
+                  ` : branch.exampleHidden && branch.example ? `
+                    <div class="bg-white rounded-xl px-3.5 py-1.5 border border-dashed border-sand text-xs text-muted flex flex-wrap items-center justify-between gap-2">
+                      <span>대표 예문을 이 브라우저에서 숨겼어요.</span>
+                      <button type="button" id="restoreExampleBtn-${idx}" onclick="event.stopPropagation(); setDefaultExampleHidden(${idx}, false)" class="min-h-9 px-2 rounded text-xs font-semibold text-indigo hover:bg-indigo-light cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo">예문 복원</button>
                     </div>
                   ` : `
                     <div class="bg-white rounded-xl p-3.5 border border-dashed border-sand text-xs text-muted flex flex-wrap items-center justify-between gap-2">
@@ -28363,8 +28377,8 @@ function renderStudyReadingGroups(data, cards) {
                   ${customExamples.map((ex, exIdx) => `
                     <div class="bg-white rounded-xl p-3.5 border border-emerald/40 shadow-2xs">
                       <div class="flex items-center justify-between mb-1">
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-light text-emerald">나만의 예문 ${exIdx + 2} · 직접 추가</span>
-                        <button type="button" onclick="deleteInlineExample(${idx}, ${exIdx})" class="text-xs text-muted hover:text-red-600 px-1.5 py-0.5 rounded hover:bg-red-50 cursor-pointer">삭제 ×</button>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-light text-emerald">나만의 예문 ${exIdx + (showDefaultExample ? 2 : 1)} · 직접 추가</span>
+                        <button type="button" onclick="event.stopPropagation(); deleteInlineExample(${idx}, ${exIdx})" aria-label="나만의 예문 ${exIdx + (showDefaultExample ? 2 : 1)} 삭제" class="min-h-9 px-2 rounded text-xs font-semibold text-red-700 hover:bg-red-50 cursor-pointer focus-visible:outline-2 focus-visible:outline-red-700">삭제</button>
                       </div>
                       <p class="hanja-font text-base sm:text-lg font-medium text-ink leading-relaxed">${renderClickableHanjaText(ex.cn, branch.word)}</p>
                       ${ex.pinyin ? `<p class="pinyin-text text-xs text-muted mt-1">${ex.pinyin}</p>` : ''}
@@ -28582,7 +28596,7 @@ function renderStudyReadingGroups(data, cards) {
 
     async function generateBatchWordUsagesWithGemini(wordBatch) {
       const wordListLines = wordBatch.map((w, idx) =>
-        `${idx + 1}. 단어: "${w.word}" (병음: ${w.wordPinyin}, HSK ${w.hskLevel}급, 기준한자: '${w.char}')`
+        `${idx + 1}. 단어: "${w.word}" (병음: ${w.wordPinyin}, 기준한자: '${w.char}'${w.hskLevel ? `, HSK ${w.hskLevel}급` : ''})${w.previousExample ? ` — 피할 기존 예문: ${JSON.stringify(w.previousExample)}` : ''}`
       ).join('\n');
 
       const prompt = `대학교 2~3학년 중급 중국어 학습자를 위한 한자·어휘 마인드맵 데이터베이스를 구축하고 있습니다.
@@ -28597,6 +28611,7 @@ ${wordListLines}
 - pos: 품사 (예: "명사", "동사", "형용사", "부사", "성어", "접속사")
 - collocation: 원어민이 가장 자주 쓰는 대표적인 호응어 1개와 한국어 뜻 (예: "达到目的 (목적을 달성하다)")
 - cn: 해당 단어가 자연스럽게 쓰인 대학교 중급 수준의 간결한 중국어 예문 1문장
+- 호응어는 문장 전체가 아닌 짧은 구로 쓰고, 예문은 그 호응어와 같거나 기존 예문과 같아서는 안 됩니다.
 - pinyin: 위 중국어 예문의 성조 부호 포함 한어병음
 - korean: 위 중국어 예문의 자연스러운 한국어 해석`;
 
@@ -28630,7 +28645,8 @@ ${wordListLines}
             word: input.word,
             wordPinyin: input.wordPinyin || '',
             hskLevel: input.hskLevel || '',
-            char: input.char || ''
+            char: input.char || '',
+            previousExample: input.previousExample || ''
           }]);
           if (arr && arr[0]) return arr[0];
         } else if (task === 'example') {
@@ -28692,13 +28708,25 @@ ${wordListLines}
       }
     }
 
+    const pendingBranchUsages = new WeakSet();
+    function comparableUsageText(text) {
+      return text.normalize('NFKC').replace(/[（(][^()（）]*\p{Script=Hangul}[^()（）]*[)）]\s*$/u, '').replace(/[\p{P}\s]/gu, '');
+    }
+
     async function aiFillBranchUsage(branchIdx, silent = false) {
       const data = hanjaDatabase[currentCharIndex];
       const branch = data?.derivations?.[branchIdx];
-      if (!branch) return false;
+      if (!branch || pendingBranchUsages.has(branch)) return false;
+      if (!silent && !getStoredGeminiKey()) {
+        openAiSettingsModal();
+        showToast('AI 설정에서 Gemini API 키를 먼저 저장해 주세요.', 'error');
+        return false;
+      }
+      pendingBranchUsages.add(branch);
       const btn = document.getElementById(`aiBranchBtn-${branchIdx}`);
       if (btn) {
         btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
         btn.textContent = 'AI 용례 생성 중…';
       }
       try {
@@ -28707,21 +28735,40 @@ ${wordListLines}
           coreImage: data.coreImage,
           word: branch.word,
           wordPinyin: branch.wordPinyin,
-          hskLevel: branch.hskLevel || ''
+          hskLevel: branch.hskLevel || '',
+          previousExample: silent ? '' : branch.example || ''
         });
         if (!res || (!res.cn && !res.collocation)) throw new Error(aiRetryMessage);
-        applyAiResultToAllChars(branch.word, res);
-        saveDatabaseToLocal();
-        if (hanjaDatabase[currentCharIndex] === data) renderMindmapBranches();
-        if (!silent) showToast(`'${branch.word}'의 의미·호응어·예문이 생성되어 모든 관련 한자에 반영되었습니다!`);
+        if (silent) {
+          applyAiResultToAllChars(branch.word, res);
+          saveDatabaseToLocal();
+        } else {
+          const fields = [res.collocation, res.cn, res.pinyin, res.korean];
+          if (fields.some(value => typeof value !== 'string' || !value.trim() || /[<>]/.test(value))) throw new Error(aiRetryMessage);
+          const nextExample = comparableUsageText(res.cn);
+          if (!nextExample || nextExample === comparableUsageText(res.collocation) || nextExample === comparableUsageText(branch.example || '')) {
+            throw new Error('AI가 서로 다른 호응어와 새 예문을 만들지 못했어요. 다시 시도해 주세요.');
+          }
+          const next = { collocation: res.collocation.trim(), example: res.cn.trim(), examplePinyin: res.pinyin.trim(), exampleKorean: res.korean.trim(), exampleHidden: false, isAiEnriched: true };
+          const previous = Object.fromEntries(Object.keys(next).map(key => [key, branch[key]]));
+          Object.assign(branch, next);
+          if (!saveDatabaseToLocal()) {
+            Object.assign(branch, previous);
+            return false;
+          }
+          showToast(`'${branch.word}' 카드에 새 호응어와 예문을 저장했어요.`);
+        }
         return true;
       } catch (e) {
         if (!silent) showToast(e.message || aiRetryMessage, 'error');
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = branch.example ? '✨ AI 호응어·예문 재생성' : '✨ AI 호응어·예문 생성';
-        }
         return false;
+      } finally {
+        pendingBranchUsages.delete(branch);
+        if (hanjaDatabase[currentCharIndex] === data) {
+          const restoreFocus = document.activeElement?.id === `aiBranchBtn-${branchIdx}`;
+          renderMindmapBranches();
+          if (restoreFocus) document.getElementById(`aiBranchBtn-${branchIdx}`)?.focus({ preventScroll: true });
+        }
       }
     }
 
@@ -28957,15 +29004,33 @@ ${wordListLines}
       showToast(`'${branch.word}'에 나만의 예문이 저장되었습니다!`);
     }
 
-    function deleteInlineExample(branchIdx, exIdx) {
-      const branch = hanjaDatabase[currentCharIndex].derivations[branchIdx];
-      if (Array.isArray(branch.customExamples)) {
-        branch.customExamples.splice(exIdx, 1);
-        saveDatabaseToLocal();
-        renderCharSelector();
-        renderMindmapBranches();
-        showToast('추가된 예문이 삭제되었습니다.');
+    function setDefaultExampleHidden(branchIdx, hidden) {
+      const branch = hanjaDatabase[currentCharIndex]?.derivations[branchIdx];
+      if (!branch?.example) return;
+      const previous = branch.exampleHidden;
+      branch.exampleHidden = hidden;
+      if (!saveDatabaseToLocal()) {
+        branch.exampleHidden = previous;
+        return;
       }
+      renderMindmapBranches();
+      const nextButton = hidden ? document.getElementById(`restoreExampleBtn-${branchIdx}`)
+        : document.getElementById(`branchNode-${branchIdx}`)?.querySelector('[aria-label="대표 예문 삭제"]');
+      nextButton?.focus({ preventScroll: true });
+      showToast(hidden ? '이 브라우저에서 대표 예문을 숨겼어요. 언제든 복원할 수 있어요.' : '대표 예문을 다시 표시했어요.');
+    }
+
+    function deleteInlineExample(branchIdx, exIdx) {
+      const branch = hanjaDatabase[currentCharIndex]?.derivations[branchIdx];
+      if (!branch?.customExamples?.[exIdx] || !confirm('직접 추가한 이 예문을 삭제할까요?')) return;
+      const [removed] = branch.customExamples.splice(exIdx, 1);
+      if (!saveDatabaseToLocal()) {
+        branch.customExamples.splice(exIdx, 0, removed);
+        return;
+      }
+      renderCharSelector();
+      renderMindmapBranches();
+      showToast('직접 추가한 예문을 삭제했어요.');
     }
 
     function deleteCustomBranch(event, branchIdx) {
