@@ -33,6 +33,7 @@
     };
   </script>
   <style>
+    #aiSettingsModal[hidden] { display: none !important; }
     body { background-color: #F8FAFC; color: #0F172A; font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif; word-break: keep-all; }
     .hanja-font { font-family: 'Noto Serif SC', 'Noto Serif KR', serif; }
     .serif-kr { font-family: 'Noto Serif KR', serif; }
@@ -22715,7 +22716,7 @@
   </div>
 
   <!-- Modal 3: Gemini AI Engine & Bulk Auto-Generation -->
-  <div id="aiSettingsModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+  <div id="aiSettingsModal" hidden class="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-white rounded-2xl border border-sand shadow-2xl max-w-lg w-full p-6 my-8 relative">
       <div class="flex items-center justify-between pb-3 mb-4 border-b border-sand">
         <h3 class="text-base font-bold text-ink serif-kr">✨ 제미나이 AI 용례 자동 생성 · 영구 저장 엔진</h3>
@@ -28407,11 +28408,11 @@ function renderStudyReadingGroups(data, cards) {
       const input = document.getElementById('geminiApiKeyInput');
       if (input) input.value = getStoredGeminiKey();
       refreshGlobalAiProgressUi();
-      if (modal) modal.classList.remove('hidden');
+      if (modal) modal.hidden = false;
     }
     function closeAiSettingsModal() {
       const modal = document.getElementById('aiSettingsModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) modal.hidden = true;
     }
     function saveGeminiApiKey() {
       cachedWorkingGeminiModel = null;
@@ -28888,7 +28889,10 @@ ${wordListLines}
     function exportSelfContainedHtmlWithAi() {
       const dict = loadAiWordDict();
       const count = Object.keys(dict).length;
-      const rawHtml = document.documentElement.outerHTML;
+      const exportRoot = document.documentElement.cloneNode(true);
+      const exportModal = exportRoot.querySelector('#aiSettingsModal');
+      if (exportModal) exportModal.hidden = true;
+      const rawHtml = exportRoot.outerHTML;
       const serialized = JSON.stringify(dict);
       const replaced = rawHtml.replace(
         /\/\* AI_DICT_START \*\/[\s\S]*?\/\* AI_DICT_END \*\//,
